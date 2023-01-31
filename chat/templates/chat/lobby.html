@@ -1,0 +1,82 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lobby</title>
+  </head>
+  <body>
+    <h1>Lets Chat</h1>
+    <form action="" id="form">
+      <input type="text" name="message" placeholder="Enter your username" />
+      <input type="submit" value="Submit" />
+    </form>
+    {% for chat in chats %} 
+    {% if chat.sender == request.user.username %}
+    <div>{{chat.message}}</div>
+    {% else %}
+    <div style="background-color: blue">{{chat.message}}</div>
+    {% endif %} 
+    
+    {% endfor %}
+    <div id="messages"></div>
+
+    {{request.user.username|json_script:"json-message-username"}}
+    <script type="text/javascript">
+      let url = "ws://" + window.location.host + "/chat/ws/";
+      const message_username = JSON.parse(
+        document.getElementById("json-message-username").textContent
+      );
+      const chatSocket = new WebSocket(url);
+
+      chatSocket.onopen = function (e) {
+        console.log("Connection established");
+      };
+
+      chatSocket.onmessage = function (e) {
+        let data = JSON.parse(e.data);
+        console.log("DATA:", data);
+        console.log(data.username);
+        console.log(message_username);
+
+        if (data.type === "chat") {
+          let messages = document.getElementById("messages");
+          if (data.username == message_username) {
+            messages.insertAdjacentHTML(
+              "beforeend",
+              `<div>
+
+                        <p>${data.message}</p>
+                    </div>`
+            );
+          } else {
+            messages.insertAdjacentHTML(
+              "beforeend",
+              `<div>
+
+                        <p style="background-color: blue;">${data.message}</p>
+                    </div>`
+            );
+          }
+        }
+      };
+
+      let form = document.getElementById("form");
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        let message = e.target.message.value;
+        // let message = document.querySelector('input[name=message]').value;
+        chatSocket.send(
+          JSON.stringify({
+            message: message,
+            username: message_username,
+          })
+        );
+        form.reset();
+      });
+    </script>
+  </body>
+</html>
